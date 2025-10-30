@@ -8,7 +8,9 @@ import PetriNetCanvas from './components/PetriNetCanvas.vue'
 
 <style>
 /* This makes the root elements 100% tall */
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   margin: 0;
   padding: 0;
