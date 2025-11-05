@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, watch, ref } from 'vue'
 import cytoscape, { Core } from 'cytoscape'
+import edgehandles from 'cytoscape-edgehandles'
+
+cytoscape.use(edgehandles)
 
 // mode defines behaviour when clicking on the canvas
 const mode = ref('select')
@@ -13,6 +16,8 @@ const cyContainer = ref<HTMLElement | null>(null)
 // We initialize it as null (or undefined) and then assign the instance in onMounted.
 // This makes it accessible to our template click handlers.
 let cy: Core | null = null
+
+let eh: any = null // Use 'any' as the specific type for edgehandles is complex/not exported easily
 
 // button functions
 function runLayout() {
@@ -126,19 +131,52 @@ onMounted(() => {
       userZoomingEnabled: true,
       userPanningEnabled: true,
     })
+
+    let edgeId = 0
+    eh = cy.edgehandles({
+      canConnect: (sourceNode, targetNode) => {
+        // whether an edge can be created between source and target
+        return !sourceNode.same(targetNode) // e.g. disallow loops
+      },
+      edgeParams: (sourceNode, targetNode) => {
+        // for edges between the specified source and target
+        // return element object to be passed to cy.add() for edge
+        return {
+          data: {
+            id: `edge${edgeId++}`,
+            source: sourceNode.id(),
+            target: targetNode.id(),
+          },
+        }
+      },
+      snap: false,
+      noEdgeEventsInDraw: true, // set events:no to edges during draws, prevents mouseouts on compounds  NOTE: what does this do?
+      disableBrowserGestures: true, // during an edge drawing gesture, disable browser gestures such as two-finger trackpad swipe and pinch-to-zoom
+    })
+
+    // Handle tap events on the cytoscape instance
     cy.on('tap', (event) => {
       // Check if the tap was on the background
       if (event.target === cy) {
         const position = event.position
-        if (mode.value === 'select') {
-          // do nothing
-        } else {
-          addNode([ mode.value ], position)
+        if (mode.value === 'place' || mode.value === 'transition') {
+          addNode([mode.value], position)
         }
       }
     })
   } else {
     console.error('Cytoscape container element not found.')
+  }
+})
+
+watch(mode, (newMode) => {
+  if (!cy || !eh) return
+
+  if (newMode === 'edge') {
+    eh.enableDrawMode()
+  } else {
+    // any other mode but edge
+    eh.disableDrawMode()
   }
 })
 </script>
@@ -148,7 +186,10 @@ onMounted(() => {
   <div class="toolbar">
     <button @click="mode = 'select'" :class="{ active: mode === 'select' }">Select</button>
     <button @click="mode = 'place'" :class="{ active: mode === 'place' }">Place</button>
-    <button @click="mode = 'transition'" :class="{ active: mode === 'transition' }">Transition</button>
+    <button @click="mode = 'transition'" :class="{ active: mode === 'transition' }">
+      Transition
+    </button>
+    <button @click="mode = 'edge'" :class="{ active: mode === 'edge' }">Edge</button>
     <button @click="runLayout">Run Layout</button>
   </div>
 </template>

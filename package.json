@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "cytoscape": "^3.33.1",
+    "cytoscape-edgehandles": "^4.0.1",
     "pinia": "^3.0.3",
     "vue": "^3.5.22"
   },
