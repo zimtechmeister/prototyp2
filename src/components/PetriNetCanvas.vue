@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import cytoscape from 'cytoscape'
+import cytoscape, { Core } from 'cytoscape'
 
+// mode defines behaviour when clicking on the canvas
 const mode = ref('select')
 
 // Create a ref for the container element
@@ -17,20 +18,18 @@ let cy: Core | null = null
 function runLayout() {
   cy?.layout({ name: 'circle' }).run()
 }
-function addNode() {
-  // Simple unique ID generator for new nodes
-  // just count up for every new node
-  const id = `node${Math.floor(Math.random() * 1000)}`
+// Add a new node with a unique ID
+// TODO: check if there is already a node with that ID?
+let nodeId = 0
+function addNode(classes: string[], position: { x: number; y: number }) {
   cy?.add({
     group: 'nodes',
+    classes: classes,
     data: {
-      id: id,
-      classes: ['place'],
-    }
+      id: `node${nodeId++}`,
+    },
+    position: position,
   })
-
-  // After adding, run a layout so it doesn't just stack on top
-  cy?.layout({ name: 'grid', rows: 1 }).run()
 }
 
 onMounted(() => {
@@ -42,7 +41,7 @@ onMounted(() => {
           {
             classes: ['place'], // an array (or a space separated string) of class names that the element has
             data: {
-              id: 'node1',
+              id: 'sdf',
               // dont need the following as they are default values
               selected: false, // whether the element is selected (default false)
               selectable: true, // whether the selection state is mutable (default true)
@@ -54,7 +53,7 @@ onMounted(() => {
           {
             classes: ['transition'],
             data: {
-              id: 'node2',
+              id: 'rst',
             },
           },
         ],
@@ -62,8 +61,8 @@ onMounted(() => {
           {
             data: {
               id: 'edge1',
-              source: 'node1',
-              target: 'node2',
+              source: 'sdf',
+              target: 'rst',
             },
           },
         ],
@@ -127,6 +126,17 @@ onMounted(() => {
       userZoomingEnabled: true,
       userPanningEnabled: true,
     })
+    cy.on('tap', (event) => {
+      // Check if the tap was on the background
+      if (event.target === cy) {
+        const position = event.position
+        if (mode.value === 'select') {
+          // do nothing
+        } else {
+          addNode([ mode.value ], position)
+        }
+      }
+    })
   } else {
     console.error('Cytoscape container element not found.')
   }
@@ -138,8 +148,8 @@ onMounted(() => {
   <div class="toolbar">
     <button @click="mode = 'select'" :class="{ active: mode === 'select' }">Select</button>
     <button @click="mode = 'place'" :class="{ active: mode === 'place' }">Place</button>
+    <button @click="mode = 'transition'" :class="{ active: mode === 'transition' }">Transition</button>
     <button @click="runLayout">Run Layout</button>
-    <button @click="addNode">Add Node</button>
   </div>
 </template>
 
