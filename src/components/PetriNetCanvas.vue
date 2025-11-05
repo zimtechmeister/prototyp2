@@ -77,16 +77,10 @@ onMounted(() => {
         rows: 1,
       },
       style: [
-        // {
-        //   selector: 'node',
-        //   style: {
-        //     shape: 'round-rectangle',
-        //   },
-        // },
         {
           selector: '.place',
           style: {
-            shape: 'ellipse', // Changed to ellipse for a more standard look
+            shape: 'ellipse',
             'background-color': '#66a3ff',
             label: 'data(id)',
             color: '#000000',
@@ -119,12 +113,61 @@ onMounted(() => {
             'curve-style': 'bezier',
           },
         },
-        // Style for selected nodes
         {
           selector: 'node:selected',
           style: {
             'background-color': '#ff6666',
             'border-color': '#ff4d4d',
+          },
+        },
+
+        {
+          selector: '.eh-handle',
+          style: {
+            'background-color': 'red',
+            width: 12,
+            height: 12,
+            shape: 'ellipse',
+            'overlay-opacity': 0,
+            'border-width': 12, // makes the handle easier to hit
+            'border-opacity': 0,
+          },
+        },
+
+        // edge handle styles:
+        {
+          selector: '.eh-hover',
+          style: {
+            'background-color': 'red',
+          },
+        },
+        {
+          selector: '.eh-source',
+          style: {
+            'border-width': 2,
+            'border-color': 'red',
+          },
+        },
+        {
+          selector: '.eh-target',
+          style: {
+            'border-width': 2,
+            'border-color': 'red',
+          },
+        },
+        {
+          selector: '.eh-preview, .eh-ghost-edge',
+          style: {
+            'background-color': 'red',
+            'line-color': 'red',
+            'target-arrow-color': 'red',
+            'source-arrow-color': 'red',
+          },
+        },
+        {
+          selector: '.eh-ghost-edge.eh-preview-active',
+          style: {
+            opacity: 0,
           },
         },
       ],
@@ -149,7 +192,9 @@ onMounted(() => {
           },
         }
       },
+      hoverDelay: 0,
       snap: false,
+      snapThreshold: 0,
       noEdgeEventsInDraw: true, // set events:no to edges during draws, prevents mouseouts on compounds  NOTE: what does this do?
       disableBrowserGestures: true, // during an edge drawing gesture, disable browser gestures such as two-finger trackpad swipe and pinch-to-zoom
     })
