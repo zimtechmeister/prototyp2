@@ -179,7 +179,12 @@ onMounted(() => {
     eh = cy.edgehandles({
       canConnect: (sourceNode, targetNode) => {
         // whether an edge can be created between source and target
-        return !sourceNode.same(targetNode) // e.g. disallow loops
+        // Check for a self-loop. Loops are always allowed.
+        if (sourceNode.same(targetNode)) {
+          return true
+        }
+        // allow edges between places and transitions
+        return sourceNode.hasClass('place') && targetNode.hasClass('transition') || sourceNode.hasClass('transition') && targetNode.hasClass('place')
       },
       edgeParams: (sourceNode, targetNode) => {
         // for edges between the specified source and target
