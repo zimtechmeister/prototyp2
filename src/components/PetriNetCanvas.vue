@@ -22,11 +22,17 @@ let wasEdgeCompleted = false // tracking the edge state for handleEdgeStop funct
 
 // Add a new node with a unique ID
 function addNode(classes: string[], position: { x: number; y: number }) {
+  // check if node already exists
+  const id = `node${nodeId++}`
+  if (cy.getElementById(id).length > 0) {
+    return addNode(classes, position)
+  }
+
   const newNode = cy?.add({
     group: 'nodes',
     classes: classes,
     data: {
-      id: `node${nodeId++}`,
+      id: id,
     },
     position: position,
   })
@@ -35,10 +41,16 @@ function addNode(classes: string[], position: { x: number; y: number }) {
 
 // Add a new edge with a unique ID
 function addEdge(sourceNode: cytoscape.Collection, targetNode: cytoscape.Collection) {
+  // check if edge already exists
+  const id = `edge${edgeId++}`
+  if (cy.getElementById(id).length > 0) {
+    return addEdge(sourceNode, targetNode)
+  }
+
   const newEdge = cy?.add({
     group: 'edges',
     data: {
-      id: `edge${edgeId++}`,
+      id: id,
       source: sourceNode.id(),
       target: targetNode.id(),
     },
