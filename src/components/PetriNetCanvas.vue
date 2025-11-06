@@ -9,25 +9,20 @@ cytoscape.use(edgehandles)
 const mode = ref('select')
 
 // Create a ref for the container element
-// This is the "Vue way" to get a reference to a DOM element.
 const cyContainer = ref<HTMLElement | null>(null)
 
 // Declare 'cy' in the top-level scope
 // We initialize it as null (or undefined) and then assign the instance in onMounted.
 // This makes it accessible to our template click handlers.
 let cy: Core | null = null
-
 let eh: any = null // Use 'any' as the specific type for edgehandles is complex/not exported easily
-
-// button functions
-function runLayout() {
-  cy?.layout({ name: 'circle' }).run()
-}
-// Add a new node with a unique ID
-// TODO: check if there is already a node with that ID?
 let nodeId = 0
+let edgeId = 0
+let wasEdgeCompleted = false // tracking the edge state for handleEdgeStop function
+
+// Add a new node with a unique ID
 function addNode(classes: string[], position: { x: number; y: number }) {
-  cy?.add({
+  const newNode = cy?.add({
     group: 'nodes',
     classes: classes,
     data: {
@@ -35,47 +30,48 @@ function addNode(classes: string[], position: { x: number; y: number }) {
     },
     position: position,
   })
+  return newNode
+}
+
+// Add a new edge with a unique ID
+function addEdge(sourceNode: cytoscape.Collection, targetNode: cytoscape.Collection) {
+  const newEdge = cy?.add({
+    group: 'edges',
+    data: {
+      id: `edge${edgeId++}`,
+      source: sourceNode.id(),
+      target: targetNode.id(),
+    },
+  })
+  return newEdge
+}
+
+// Function to handle node creation after an unsuccessful edge draw
+function handleEdgeStop(
+  sourceNode: cytoscape.Collection,
+  position: {
+    x: number
+    y: number
+  },
+) {
+  // check if no edge was created (ehcomplete did not fire) before ehstop triggers
+  if (!wasEdgeCompleted) {
+    // Determine the class of the new node based on the source node's class
+    const newClass = sourceNode.hasClass('place') ? 'transition' : 'place'
+
+    // Create the new node
+    const newNode = addNode([newClass], position)
+    // Create the connecting edge
+    if (newNode) addEdge(sourceNode, newNode)
+  }
+  // Reset the flag for the next edge draw sequence
+  wasEdgeCompleted = false
 }
 
 onMounted(() => {
   if (cyContainer.value) {
     cy = cytoscape({
       container: document.getElementById('cy'),
-      elements: {
-        nodes: [
-          {
-            classes: ['place'], // an array (or a space separated string) of class names that the element has
-            data: {
-              id: 'sdf',
-              // dont need the following as they are default values
-              selected: false, // whether the element is selected (default false)
-              selectable: true, // whether the selection state is mutable (default true)
-              locked: false, // when locked a node's position is immutable (default false)
-              grabbable: true, // whether the node can be grabbed and moved by the user
-              pannable: false, // whether dragging the node causes panning instead of grabbing
-            },
-          },
-          {
-            classes: ['transition'],
-            data: {
-              id: 'rst',
-            },
-          },
-        ],
-        edges: [
-          {
-            data: {
-              id: 'edge1',
-              source: 'sdf',
-              target: 'rst',
-            },
-          },
-        ],
-      },
-      layout: {
-        name: 'grid',
-        rows: 1,
-      },
       style: [
         {
           selector: '.place',
@@ -175,7 +171,6 @@ onMounted(() => {
       userPanningEnabled: true,
     })
 
-    let edgeId = 0
     eh = cy.edgehandles({
       canConnect: (sourceNode, targetNode) => {
         // whether an edge can be created between source and target
@@ -184,14 +179,16 @@ onMounted(() => {
           return true
         }
         // allow edges between places and transitions
-        return sourceNode.hasClass('place') && targetNode.hasClass('transition') || sourceNode.hasClass('transition') && targetNode.hasClass('place')
+        return (
+          (sourceNode.hasClass('place') && targetNode.hasClass('transition')) ||
+          (sourceNode.hasClass('transition') && targetNode.hasClass('place'))
+        )
       },
       edgeParams: (sourceNode, targetNode) => {
-        // for edges between the specified source and target
-        // return element object to be passed to cy.add() for edge
+        // return addEdge(sourceNode, targetNode) // NOTE: this somehow produces errors
         return {
           data: {
-            id: `edge${edgeId++}`,
+            id : `edge${edgeId++}`,
             source: sourceNode.id(),
             target: targetNode.id(),
           },
@@ -200,8 +197,16 @@ onMounted(() => {
       hoverDelay: 0,
       snap: false,
       snapThreshold: 0,
-      noEdgeEventsInDraw: true, // set events:no to edges during draws, prevents mouseouts on compounds  NOTE: what does this do?
+      noEdgeEventsInDraw: true, // set events:no to edges during draws, prevents mouseouts on compounds
       disableBrowserGestures: true, // during an edge drawing gesture, disable browser gestures such as two-finger trackpad swipe and pinch-to-zoom
+    })
+
+    cy.on('ehcomplete', (event, sourceNode, targetNode, addedEdge) => {
+      console.log('ehcomplete', sourceNode, targetNode, addedEdge)
+      wasEdgeCompleted = true // Set flag to true on successful edge creation
+    })
+    cy.on('ehstop', (event, sourceNode) => {
+      handleEdgeStop(sourceNode, event.position)
     })
 
     // Handle tap events on the cytoscape instance
@@ -240,7 +245,6 @@ watch(mode, (newMode) => {
       Transition
     </button>
     <button @click="mode = 'edge'" :class="{ active: mode === 'edge' }">Edge</button>
-    <button @click="runLayout">Run Layout</button>
   </div>
 </template>
 
